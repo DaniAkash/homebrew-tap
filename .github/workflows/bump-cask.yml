@@ -1,0 +1,74 @@
+name: Bump agent-terminal cask
+
+# Fired by a repository_dispatch from DaniAkash/agent-terminal's
+# tap-dispatch workflow, which runs when a stable release is published
+# there. The client_payload carries the new version + both per-arch
+# DMG URLs so we can compute the SHA256s without guessing filenames.
+on:
+  repository_dispatch:
+    types: [agent-terminal-release]
+
+# Only need write access to push the updated cask commit back to main.
+permissions:
+  contents: write
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Parse dispatch payload
+        id: parse
+        run: |
+          set -euo pipefail
+          echo "version=${{ github.event.client_payload.version }}"     >> "$GITHUB_OUTPUT"
+          echo "arm_url=${{ github.event.client_payload.arm_url }}"     >> "$GITHUB_OUTPUT"
+          echo "intel_url=${{ github.event.client_payload.intel_url }}" >> "$GITHUB_OUTPUT"
+
+      - name: Compute SHA256s
+        id: hash
+        run: |
+          set -euo pipefail
+          curl -sL --fail-with-body -o arm.dmg   "${{ steps.parse.outputs.arm_url }}"
+          curl -sL --fail-with-body -o intel.dmg "${{ steps.parse.outputs.intel_url }}"
+          echo "arm_sha=$(shasum -a 256 arm.dmg | cut -d' ' -f1)"     >> "$GITHUB_OUTPUT"
+          echo "intel_sha=$(shasum -a 256 intel.dmg | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+
+      - name: Patch cask
+        run: |
+          set -euo pipefail
+          version="${{ steps.parse.outputs.version }}"
+          arm_sha="${{ steps.hash.outputs.arm_sha }}"
+          intel_sha="${{ steps.hash.outputs.intel_sha }}"
+
+          # awk-driven multi-line rewrite of the version + both SHAs.
+          # Idempotent: running against an already-patched file with the
+          # same values produces the same output.
+          awk -v v="$version" -v a="$arm_sha" -v i="$intel_sha" '
+            /^  version / { print "  version \"" v "\""; next }
+            /^  sha256 arm:/ {
+              print "  sha256 arm:   \"" a "\",";
+              print "         intel: \"" i "\"";
+              # Original file has intel on the next line; skip it.
+              getline; next
+            }
+            { print }
+          ' Casks/agent-terminal.rb > Casks/agent-terminal.rb.new
+          mv Casks/agent-terminal.rb.new Casks/agent-terminal.rb
+
+      - name: Show the diff
+        run: git --no-pager diff Casks/agent-terminal.rb
+
+      - name: Commit and push
+        run: |
+          set -euo pipefail
+          if git diff --quiet Casks/agent-terminal.rb; then
+            echo "No changes; version and SHAs already match."
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Casks/agent-terminal.rb
+          git commit -m "agent-terminal ${{ steps.parse.outputs.version }}"
+          git push
