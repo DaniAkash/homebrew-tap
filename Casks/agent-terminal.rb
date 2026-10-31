@@ -1,9 +1,9 @@
 cask "agent-terminal" do
   arch arm: "aarch64", intel: "x64"
 
-  version "0.4.0"
-  sha256 arm:   "7578d77bd5f5de5f5b8d0d12b44ceba1ab5ba933b8f534ad814b45b5fae4e3fb",
-         intel: "d7610c367a4243e92f6b8f7f271103ecb6315fd74406fe9158813129caaee3d8"
+  version "0.5.0"
+  sha256 arm:   "c8d4dfc39ab10c6a00e955110f0eace644594f35990f03ddd68bff50f2606d01",
+         intel: "5501b802bfb2022b04da8ace0f8e685b83c7ac22c3a0a845825326368f0ef63e"
 
   url "https://github.com/DaniAkash/agent-terminal/releases/download/v#{version}/agent-terminal-#{arch}.dmg"
   name "Agent Terminal"
