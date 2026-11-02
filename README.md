@@ -5,9 +5,10 @@ Personal Homebrew tap for tools by Dani Akash.
 ## Install
 
 ```sh
-brew tap daniakash/tap
-brew install --cask agent-terminal
+brew install --cask daniakash/tap/agent-terminal
 ```
+
+The fully qualified name taps this repo and trusts just that one cask, which is what Homebrew wants for a non-official tap. After the first install, the short name works for upgrades and removal.
 
 ## Available Casks
 
